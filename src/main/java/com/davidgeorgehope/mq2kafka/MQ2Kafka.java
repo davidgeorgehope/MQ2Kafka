@@ -3,6 +3,11 @@ package com.davidgeorgehope.mq2kafka;
 import com.ibm.mq.*;
 import org.apache.kafka.clients.producer.*;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Properties;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
@@ -13,9 +18,11 @@ import static com.ibm.mq.constants.CMQC.*;
 public class MQ2Kafka {
     protected static Logger logger = Logger.getLogger(MQ2Kafka.class.getName());
 
-    static Producer<String, String> producer;
 
     public static void main(String[]args){
+        Producer<String, String> producer;
+
+        //final Properties props = loadConfig(args[0]);
 
         Properties kafkaProps = new Properties();
         kafkaProps.put("bootstrap.servers","pkc-ep9mm.us-east-2.aws.confluent.cloud:9092");
@@ -26,29 +33,59 @@ public class MQ2Kafka {
         kafkaProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
         kafkaProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
-        producer = new KafkaProducer<>(kafkaProps);
+
+        String channel = "";
+        String queueManagerName = "";
 
         Properties properties = new Properties();
-        properties.put(CHANNEL_PROPERTY, "channel");
+        properties.put(CHANNEL_PROPERTY, channel);
         properties.put(TRANSPORT_PROPERTY, TRANSPORT_MQSERIES_BINDINGS);
+
         try {
-            MQQueueManager queueManager = new MQQueueManager("Yeah", properties);
+            while(true) {
 
-            int openOptions = MQC.MQOO_INPUT_AS_Q_DEF
-                    | MQC.MQOO_INPUT_SHARED;
+                MQQueueManager queueManager = new MQQueueManager(queueManagerName, properties);
+                producer = new KafkaProducer<>(kafkaProps);
 
-            MQQueue queue = queueManager
-                    .accessQueue("",
-                            openOptions, null, null, null);
+
+                int openOptions = MQC.MQOO_INPUT_AS_Q_DEF
+                        | MQC.MQOO_INPUT_SHARED;
+
+                MQQueue queue = queueManager
+                        .accessQueue("",
+                                openOptions, null, null, null);
+
                 int depth = queue.getCurrentDepth();
+
                 while (depth-- > 0) {
                     MQMessage msg = new MQMessage();
                     MQGetMessageOptions gmo = new MQGetMessageOptions();
                     queue.get(msg, gmo);
                     String mqMsg = msg.readStringOfByteLength(msg.getDataLength());
                     logger.log(Level.INFO, mqMsg);
-                    produce(mqMsg);
+
+                    final String key, value;
+                    key = "NO-KEY";
+                    value = mqMsg;
+
+                    producer.send(new ProducerRecord<String, String>("topic", key, value), new Callback() {
+                        @Override
+                        public void onCompletion(RecordMetadata m, Exception e) {
+                            if (e != null) {
+                                e.printStackTrace();
+                            } else {
+                                logger.log(Level.INFO, "Produced record to topic " + m.topic() + " partition [" + m.partition() + "] @ offset " + m.offset() + "");
+                            }
+                        }
+                    });
                 }
+
+                producer.flush();
+                producer.close();
+                queue.close();
+                queueManager.disconnect();
+                Thread.sleep(1000);
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -56,17 +93,15 @@ public class MQ2Kafka {
 
     }
 
-    public static Future<RecordMetadata> produce(final String message) {
-        final String[] parts = message.split("-");
-        final String key, value;
-        if (parts.length > 1) {
-            key = parts[0];
-            value = parts[1];
-        } else {
-            key = "NO-KEY";
-            value = parts[0];
+    public static Properties loadConfig(final String configFile) throws IOException {
+        if (!Files.exists(Paths.get(configFile))) {
+            throw new IOException(configFile + " not found.");
         }
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>("", key, value);
-        return producer.send(producerRecord);
+        final Properties cfg = new Properties();
+        try (InputStream inputStream = new FileInputStream(configFile)) {
+            cfg.load(inputStream);
+        }
+        return cfg;
     }
+
 }

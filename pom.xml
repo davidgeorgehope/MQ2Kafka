@@ -49,6 +49,11 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.davidgeorgehope.mq2kafka.MQ2Kafka</mainClass>
+                        </manifest>
+                    </archive>
                 </configuration>
 
                 <executions>

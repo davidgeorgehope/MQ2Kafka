@@ -1,23 +1,31 @@
 package com.davidgeorgehope.mq2kafka;
 
 import com.ibm.mq.*;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.clients.producer.*;
 
 import java.util.Properties;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static com.ibm.mq.constants.CMQC.*;
 
 public class MQ2Kafka {
+    protected static Logger logger = Logger.getLogger(MQ2Kafka.class.getName());
 
     static Producer<String, String> producer;
 
     public static void main(String[]args){
 
         Properties kafkaProps = new Properties();
+        kafkaProps.put("bootstrap.servers","pkc-ep9mm.us-east-2.aws.confluent.cloud:9092");
+        kafkaProps.put("security.protocol","SASL_SSL");
+        kafkaProps.put("sasl.jaas.config","org.apache.kafka.common.security.plain.PlainLoginModule required username='{{ CLUSTER_API_KEY }}' password='{{ CLUSTER_API_SECRET }}'");
+        kafkaProps.put("sasl.mechanism","PLAIN");
+        kafkaProps.put(ProducerConfig.ACKS_CONFIG, "1");
+        kafkaProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+
         producer = new KafkaProducer<>(kafkaProps);
 
         Properties properties = new Properties();
@@ -38,6 +46,7 @@ public class MQ2Kafka {
                     MQGetMessageOptions gmo = new MQGetMessageOptions();
                     queue.get(msg, gmo);
                     String mqMsg = msg.readStringOfByteLength(msg.getDataLength());
+                    logger.log(Level.INFO, mqMsg);
                     produce(mqMsg);
                 }
 

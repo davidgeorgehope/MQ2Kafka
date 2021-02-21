@@ -79,7 +79,7 @@ public class MQ2Kafka {
             MQQueue queue;
             MQQueueManager queueManager;
 
-            int openOptions = MQC.MQOO_INPUT_AS_Q_DEF;
+            int openOptions = MQC.MQOO_INQUIRE + MQC.MQOO_FAIL_IF_QUIESCING + MQC.MQOO_INPUT_SHARED;;
 
             queueManager = new MQQueueManager(queueManagerName, mqProps);
             queue = queueManager

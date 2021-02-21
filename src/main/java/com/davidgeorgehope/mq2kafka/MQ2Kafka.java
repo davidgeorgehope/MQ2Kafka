@@ -72,6 +72,7 @@ public class MQ2Kafka {
             mqProps.put(CHANNEL_PROPERTY, channel);
             mqProps.put(TRANSPORT_PROPERTY, transport);
         }
+        logger.log(Level.INFO, "START");
 
         try {
 
@@ -136,6 +137,8 @@ public class MQ2Kafka {
             }
         }
         catch(Exception e){
+            e.printStackTrace();
+
 
         }
 

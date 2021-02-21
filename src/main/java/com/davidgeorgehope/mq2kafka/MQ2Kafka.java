@@ -50,8 +50,11 @@ public class MQ2Kafka {
         String channel;
         String queueManagerName;
         String queueName;
+        Properties mqProps = null;
 
-        Properties mqProps = loadConfig(args[1]);
+        if (args.length>1) {
+             mqProps = loadConfig(args[1]);
+        }
         if(mqProps == null) {
             mqProps = new Properties();
             mqProps.put(CHANNEL_PROPERTY, "SYSTEM.DEF.SVRCONN");

@@ -67,10 +67,9 @@ public class MQ2Kafka {
             String transport = mqProps.getProperty(TRANSPORT_PROPERTY);
             queueManagerName = mqProps.getProperty("QUEUE_MANAGER");
             queueName = mqProps.getProperty("QUEUE");
+            mqProps.remove("QUEUE_MANAGER");
+            mqProps.remove("QUEUE");
 
-            mqProps = new Properties();
-            mqProps.put(CHANNEL_PROPERTY, channel);
-            mqProps.put(TRANSPORT_PROPERTY, transport);
         }
         logger.log(Level.INFO, "START");
 
